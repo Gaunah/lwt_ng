@@ -1,0 +1,27 @@
+# Rust
+target/
+Cargo.lock
+**/*.rs.bk
+
+# SQLite
+*.db
+*.db3
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# System-specific
+.DS_Store   # macOS
+Thumbs.db   # Windows
+desktop.ini # Windows
+*.swp       # Vim swap files
+*.swo       # Vim swap files
+
+# Other common files to ignore
+*.log
+*.tmp
