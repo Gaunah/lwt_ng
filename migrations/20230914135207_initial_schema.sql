@@ -1,39 +1,39 @@
 CREATE TABLE languages (
-    LanguageID INTEGER PRIMARY KEY,
-    Name TEXT NOT NULL UNIQUE
+    language_id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE
 );
 
 CREATE TABLE texts (
-    TextID INTEGER PRIMARY KEY,
-    LanguageID INTEGER REFERENCES languages(LanguageID),
-    Title TEXT NOT NULL,
-    Content TEXT NOT NULL,
-    SourceURL TEXT,
-    AudioURL TEXT
+    text_id INTEGER PRIMARY KEY,
+    language_id INTEGER REFERENCES languages(language_id),
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    source_url TEXT,
+    audio_url TEXT
 );
 
 CREATE TABLE tags (
-    TagID INTEGER PRIMARY KEY,
-    Name TEXT NOT NULL UNIQUE
+    tag_id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE
 );
 
 CREATE TABLE text_tags (
-    TextID INTEGER REFERENCES texts(TextID),
-    TagID INTEGER REFERENCES tags(TagID),
-    PRIMARY KEY (TextID, TagID)
+    text_id INTEGER REFERENCES texts(text_id),
+    tag_id INTEGER REFERENCES tags(tag_id),
+    PRIMARY KEY (text_id, tag_id)
 );
 
 CREATE TABLE words (
-    WordID INTEGER PRIMARY KEY,
-    Word TEXT NOT NULL,
-    Translation TEXT NOT NULL,
-    LanguageID INTEGER REFERENCES languages(LanguageID),
-    LearningGrade INTEGER NOT NULL CHECK (LearningGrade >= 0 AND LearningGrade <= 4),
-    Notes TEXT
+    word_id INTEGER PRIMARY KEY,
+    word TEXT NOT NULL,
+    translation TEXT NOT NULL,
+    language_id INTEGER REFERENCES languages(language_id),
+    learning_grade INTEGER NOT NULL CHECK (learning_grade >= 0 AND learning_grade <= 4),
+    notes TEXT
 );
 
 CREATE TABLE example_sentences (
-    SentenceID INTEGER PRIMARY KEY,
-    WordID INTEGER REFERENCES words(WordID),
-    Content TEXT NOT NULL
+    sentence_id INTEGER PRIMARY KEY,
+    word_id INTEGER REFERENCES words(word_id),
+    content TEXT NOT NULL
 );
