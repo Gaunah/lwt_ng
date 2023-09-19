@@ -65,10 +65,10 @@ pub async fn add_word(
     pool: &Pool<Sqlite>,
 ) -> Result<sqlx::sqlite::SqliteQueryResult, sqlx::Error> {
     sqlx::query!(
-        r#"
+        "
         INSERT INTO words (word, translation, language_id, learning_grade, notes)
         VALUES ($1,$2, $3, $4, $5)
-        "#,
+        ",
         word.word,
         word.translation,
         word.language_id,
@@ -105,10 +105,10 @@ pub async fn add_text(
     pool: &Pool<Sqlite>,
 ) -> Result<sqlx::sqlite::SqliteQueryResult, sqlx::Error> {
     sqlx::query!(
-        r#"
+        "
         INSERT INTO texts (language_id, title, content, source_url, audio_url)
         VALUES ($1, $2, $3, $4, $5)
-        "#,
+        ",
         text.language_id,
         text.title,
         text.content,
