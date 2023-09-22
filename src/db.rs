@@ -1,6 +1,5 @@
 use sqlx::{migrate::MigrateDatabase, sqlite::SqlitePool, FromRow, Pool, Sqlite};
 
-#[derive(Debug)]
 pub struct Language {
     language_id: i64,
     name: String,
