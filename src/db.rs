@@ -121,7 +121,7 @@ pub async fn add_text(
 
 pub async fn setup_db_connection(db_url: &str) -> Result<Pool<Sqlite>, sqlx::Error> {
     if !Sqlite::database_exists(db_url).await.unwrap_or(false) {
-        println!("Creating new database {}", db_url);
+        tracing::info!("Could not find DB; creating new one!");
         Sqlite::create_database(db_url).await?;
     }
 

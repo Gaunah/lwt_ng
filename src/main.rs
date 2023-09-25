@@ -1,7 +1,7 @@
 #[allow(unused)]
 mod db;
 mod gui;
-use std::env;
+use std::{env, process};
 
 use tokio::sync::mpsc;
 
@@ -21,11 +21,13 @@ pub enum DbResult {
 
 #[tokio::main]
 async fn main() {
+    tracing_subscriber::fmt::init();
     dotenvy::dotenv().unwrap();
     let db_url = env!("DATABASE_URL");
-    let pool = db::setup_db_connection(db_url)
-        .await
-        .expect("could not open database connection");
+    let pool = db::setup_db_connection(db_url).await.unwrap_or_else(|err| {
+        tracing::error!("{err}");
+        process::exit(1);
+    });
 
     let (command_tx, mut command_rx) = mpsc::channel(10);
     let (response_tx, response_rx) = mpsc::channel(10);

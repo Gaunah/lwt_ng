@@ -8,11 +8,12 @@ pub struct LwtNgGui {
     languages: Vec<db::Language>,
     new_language_to_add: String,
     last_action: RichText,
+    is_initialized: bool,
 }
 
 impl LwtNgGui {
     pub fn new(
-        cc: &eframe::CreationContext<'_>,
+        _cc: &eframe::CreationContext<'_>,
         command_tx: mpsc::Sender<Command>,
         response_rx: mpsc::Receiver<DbResult>,
     ) -> Self {
@@ -32,24 +33,20 @@ impl LwtNgGui {
             languages: Vec::new(),
             new_language_to_add: String::new(),
             last_action: RichText::new(""),
+            is_initialized: false,
         }
     }
-}
 
-impl eframe::App for LwtNgGui {
-    /// Called by the frame work to save state before shutdown.
-    fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        //eframe::set_value(storage, eframe::APP_KEY, self);
-    }
-
-    fn update(&mut self, ctx: &eframe::egui::Context, frame: &mut eframe::Frame) {
+    fn process_db_results(&mut self) {
         if let Ok(result) = self.response_rx.try_recv() {
             self.last_action = match result {
                 crate::DbResult::AddLanguageResult => {
                     RichText::new("Language added").color(Color32::GREEN)
                 }
                 crate::DbResult::GetAllLanguagesResult { lang_vec } => {
-                    RichText::new(format!("Fetched all languages: {}", lang_vec.len()))
+                    let lang_count = lang_vec.len();
+                    self.languages = lang_vec;
+                    RichText::new(format!("Fetched all languages: {lang_count}"))
                         .color(Color32::GREEN)
                 }
                 crate::DbResult::Error { msg } => {
@@ -57,6 +54,29 @@ impl eframe::App for LwtNgGui {
                 }
             };
         }
+    }
+
+    fn init_setup(&self) {
+        let tx = self.command_tx.clone();
+        tokio::spawn(async move {
+            tx.send(Command::GetAllLanguages).await.unwrap();
+        });
+    }
+}
+
+impl eframe::App for LwtNgGui {
+    /// Called by the frame work to save state before shutdown.
+    fn save(&mut self, _storage: &mut dyn eframe::Storage) {
+        //eframe::set_value(storage, eframe::APP_KEY, self);
+    }
+
+    fn update(&mut self, ctx: &eframe::egui::Context, _frame: &mut eframe::Frame) {
+        if !self.is_initialized {
+            self.init_setup();
+            self.is_initialized = true;
+        }
+
+        self.process_db_results();
 
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             ui.vertical_centered(|ui| {
@@ -78,9 +98,11 @@ impl eframe::App for LwtNgGui {
                     let new_lang = self.new_language_to_add.clone();
                     let tx = self.command_tx.clone();
                     tokio::spawn(async move {
-                        let cmd = Command::AddLanguage { name: new_lang };
-                        // send command
-                        tx.send(cmd).await.unwrap();
+                        // send add and get to update the list
+                        tx.send(Command::AddLanguage { name: new_lang })
+                            .await
+                            .unwrap();
+                        tx.send(Command::GetAllLanguages).await.unwrap();
                     });
                     self.new_language_to_add.clear();
                 }
