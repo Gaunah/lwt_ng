@@ -40,16 +40,16 @@ impl LwtNgGui {
     fn process_db_results(&mut self) {
         if let Ok(result) = self.response_rx.try_recv() {
             self.last_action = match result {
-                crate::DbResult::AddLanguageResult => {
+                DbResult::AddLanguageResult => {
                     RichText::new("Language added").color(Color32::GREEN)
                 }
-                crate::DbResult::GetAllLanguagesResult { lang_vec } => {
+                DbResult::GetAllLanguagesResult { lang_vec } => {
                     let lang_count = lang_vec.len();
                     self.languages = lang_vec;
                     RichText::new(format!("Fetched all languages: {lang_count}"))
                         .color(Color32::GREEN)
                 }
-                crate::DbResult::Error { msg } => {
+                DbResult::Error { msg } => {
                     RichText::new(format!("Error: {msg}")).color(Color32::RED)
                 }
             };
@@ -59,7 +59,9 @@ impl LwtNgGui {
     fn init_setup(&self) {
         let tx = self.command_tx.clone();
         tokio::spawn(async move {
-            tx.send(Command::GetAllLanguages).await.unwrap();
+            if let Err(e) = tx.send(Command::GetAllLanguages).await {
+                tracing::error!("{e}");
+            }
         });
     }
 }
@@ -91,18 +93,20 @@ impl eframe::App for LwtNgGui {
             ui.horizontal(|ui| {
                 ui.label("New Language: ");
                 ui.text_edit_singleline(&mut self.new_language_to_add);
-                if ui
-                    .add_enabled(!self.new_language_to_add.is_empty(), Button::new("Add"))
-                    .clicked()
-                {
+                let add_lang_btn =
+                    ui.add_enabled(!self.new_language_to_add.is_empty(), Button::new("Add"));
+
+                if add_lang_btn.clicked() || ui.input(|i| i.key_pressed(egui::Key::Enter)) {
                     let new_lang = self.new_language_to_add.clone();
                     let tx = self.command_tx.clone();
                     tokio::spawn(async move {
                         // send add and get to update the list
-                        tx.send(Command::AddLanguage { name: new_lang })
-                            .await
-                            .unwrap();
-                        tx.send(Command::GetAllLanguages).await.unwrap();
+                        if let Err(e) = tx.send(Command::AddLanguage { name: new_lang }).await {
+                            tracing::error!("{e}");
+                        }
+                        if let Err(e) = tx.send(Command::GetAllLanguages).await {
+                            tracing::error!("{e}");
+                        }
                     });
                     self.new_language_to_add.clear();
                 }

@@ -22,19 +22,51 @@ pub enum DbResult {
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt::init();
-    dotenvy::dotenv().unwrap();
-    let db_url = env!("DATABASE_URL");
-    let pool = db::setup_db_connection(db_url).await.unwrap_or_else(|err| {
+    dotenvy::dotenv().unwrap_or_else(|err| {
+        tracing::error!("{err}");
+        process::exit(1);
+    });
+    let pool = db::setup_db_connection(env!("DATABASE_URL"))
+        .await
+        .unwrap_or_else(|err| {
+            tracing::error!("{err}");
+            process::exit(1);
+        });
+
+    let (command_tx, command_rx) = mpsc::channel(5);
+    let (response_tx, response_rx) = mpsc::channel(5);
+
+    let manager = spawn_command_manager(command_rx, response_tx, pool);
+
+    let native_options = eframe::NativeOptions {
+        follow_system_theme: true,
+        ..Default::default()
+    };
+
+    eframe::run_native(
+        "LWT_NG",
+        native_options,
+        Box::new(|cc| Box::new(gui::LwtNgGui::new(cc, command_tx, response_rx))),
+    )
+    .unwrap_or_else(|err| {
         tracing::error!("{err}");
         process::exit(1);
     });
 
-    let (command_tx, mut command_rx) = mpsc::channel(10);
-    let (response_tx, response_rx) = mpsc::channel(10);
+    manager.await.unwrap_or_else(|err| {
+        tracing::error!("{err}");
+        process::exit(1);
+    });
+}
 
-    let manager = tokio::spawn(async move {
+fn spawn_command_manager(
+    mut command_rx: mpsc::Receiver<Command>,
+    response_tx: mpsc::Sender<DbResult>,
+    pool: sqlx::Pool<sqlx::Sqlite>,
+) -> tokio::task::JoinHandle<()> {
+    tokio::spawn(async move {
         while let Some(cmd) = command_rx.recv().await {
-            let _ = match cmd {
+            if let Err(e) = match cmd {
                 Command::GetAllLanguages => {
                     match db::get_all_languages(&pool).await {
                         Ok(lang_vec) => {
@@ -51,21 +83,9 @@ async fn main() {
                     }
                     .await
                 }
-            };
+            } {
+                tracing::error!("{e}");
+            }
         }
-    });
-
-    let native_options = eframe::NativeOptions {
-        follow_system_theme: true,
-        ..Default::default()
-    };
-
-    eframe::run_native(
-        "LWT_NG",
-        native_options,
-        Box::new(|cc| Box::new(gui::LwtNgGui::new(cc, command_tx, response_rx))),
-    )
-    .unwrap();
-
-    manager.await.unwrap();
+    })
 }
